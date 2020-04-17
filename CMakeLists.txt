@@ -2,16 +2,7 @@
 # and include sub-projects here.
 cmake_minimum_required (VERSION 3.8)
 
-project ("ParallelProgramming")
-
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-SET(CMAKE_C_STANDARD 11)
-set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS OFF)
+#project ("ParallelProgramming")
 
 # Include sub-projects.
 add_subdirectory ("Assignment1")
