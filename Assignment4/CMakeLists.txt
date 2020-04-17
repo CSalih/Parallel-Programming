@@ -12,12 +12,19 @@ add_executable (Critical "Task1/Critical.c")
 add_executable (Reduction "Task1/Reduction.c")
 add_executable (Pthread "Task1/Pthread.c")
 
+# Task 2
+add_executable (ex2 "Task2/ex2.c")
+add_executable (ex2_b "Task2/ex2_b.c")
+
 
 target_link_libraries(Mergesort PRIVATE OpenMP::OpenMP_CXX)
 
 target_link_libraries(Atomic PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(Critical PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(Reduction PRIVATE OpenMP::OpenMP_C)
+target_link_libraries(ex2 PRIVATE OpenMP::OpenMP_C)
+target_link_libraries(ex2_b PRIVATE OpenMP::OpenMP_C)
+
 
 target_link_libraries(Atomic PRIVATE m)
 target_link_libraries(Critical PRIVATE m)
