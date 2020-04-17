@@ -16,6 +16,7 @@ Type in the command pallette (`STRG + Shift + P`) of VS Code.
 ```
 
 ## Build
+### VS Code
 Build a specific executable type in the command pallette:
 ```
 > CMake: Build Target
@@ -26,3 +27,14 @@ now you can select the executable you want to build. To Build all executable:
 ```
 
 Executable is located in the `build` folder. For more details please read the official documentation of [CMake Tools: Building](https://vector-of-bool.github.io/docs/vscode-cmake-tools/building.html).
+
+
+### CMake cli
+
+``` bash
+$ cd Project_Dir/Assignment[N]
+$ mkdir build
+$ cd build
+$ cmake ..
+$ cmake --build .
+```
