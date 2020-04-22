@@ -17,9 +17,15 @@ set(CMAKE_C_EXTENSIONS OFF)
 find_package(OpenMP REQUIRED)
 
 
-
 # Add source to this project's executable.
-# e.g. add_executable (Example "Task1/main.cpp" "Task1/Example.cpp" "Task1/Example.h")
+add_executable(Mergesort "Task3/main.cpp" "Task3/Mergesort.cpp" "Task3/Mergesort.h")
+add_executable(Flush "Task2/flush.c")
+
+target_link_libraries(Mergesort PRIVATE OpenMP::OpenMP_CXX)
+target_link_libraries(Flush PRIVATE OpenMP::OpenMP_CXX)
+
+set_target_properties(Flush PROPERTIES COMPILE_FLAGS "-O3" )
+
 
 # target_link_libraries(Example PRIVATE OpenMP::OpenMP_CXX)   # Link OpenMP
 # target_link_libraries(Example PRIVATE m)                    # Link math library
