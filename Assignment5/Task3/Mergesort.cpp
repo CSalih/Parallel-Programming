@@ -5,7 +5,7 @@
 
 using namespace std;
 
-void Mergesort::merge(int32_t* arr, int l, int m, int r)
+void Mergesort::merge(int32_t *arr, int l, int m, int r)
 {
     int i, j, k;
     int n1 = m - l + 1;
@@ -21,9 +21,9 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
         R[j] = arr[m + 1 + j];
 
     /* Merge the temp arrays back into arr[l..r]*/
-    i = 0;
-    j = 0;
-    k = l;
+    i = 0; // Initial index of first subarray
+    j = 0; // Initial index of second subarray
+    k = l; // Initial index of merged subarray
     while (i < n1 && j < n2)
     {
         if (L[i] <= R[j])
@@ -39,7 +39,8 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
         k++;
     }
 
-    /* Copy the remaining elements of L[], if there are any */
+    /* Copy the remaining elements of L[], if there 
+       are any */
     while (i < n1)
     {
         arr[k] = L[i];
@@ -47,7 +48,8 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
         k++;
     }
 
-    /* Copy the remaining elements of R[], if there are any */
+    /* Copy the remaining elements of R[], if there 
+       are any */
     while (j < n2)
     {
         arr[k] = R[j];
@@ -56,40 +58,44 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
     }
 }
 
-void Mergesort::sort(int32_t* arr, int size)
+void Mergesort::mergeSort(int32_t *arr, int l, int r)
 {
-    for (int i = 1; i <= size - 1; i += i)
+    if (l < r)
     {
-        for (int j = 0; j < size - 1; j += 2 * i)
-        {
-            int mid = min(j + i - 1, size - 1);
-            int rightEnd = min(j + 2 * i - 1, size - 1);
+        // Same as (l+r)/2, but avoids overflow for large l and h
+        int m = l + (r - l) / 2;
 
-            merge(arr, j, mid, rightEnd);
+        // No taskwait is need
+        #pragma omp taskgroup
+        {
+            // Avoid small chunks with omp (https://stackoverflow.com/a/47495419)
+            #pragma omp task if (r - l >= MIN_MERGESORT_SIZE)
+            mergeSort(arr, l, m);
+
+            #pragma omp task if (r - l >= MIN_MERGESORT_SIZE)
+            mergeSort(arr, m + 1, r);
         }
+        merge(arr, l, m, r);
     }
 }
 
-void Mergesort::sortParallel(int32_t* arr, int size)
+void Mergesort::sort(int32_t *arr, int size)
 {
-    cout << "sorting parallel ... " << endl;
-    // omp incr_expr: i += i not allowed -> solution: var += incr
-    int incr = 1;
-    #pragma omp parallel for
-    for (int i = incr; i <= size - 1; i += incr)
-    {
-        for (int j = 0; j < size - 1; j += i * 2)
-        {
-            int mid = min(j + i - 1, size - 1);
-            int rightEnd = min(j + 2 * i - 1, size - 1);
+    mergeSort(arr, 0, size - 1);
+}
 
-            merge(arr, j, mid, rightEnd);
-        }
-        incr = i;
+void Mergesort::sortParallel(int32_t *arr, int size)
+{
+    #pragma omp parallel
+    #pragma omp single
+    {
+        cout << "Sorting with " << omp_get_num_threads() << " Threads ..." << endl;
+        mergeSort(arr, 0, size - 1);
     }
 }
 
-void Mergesort::fillWithRandomNumbers(int32_t* arr, int size) {
+void Mergesort::fillWithRandomNumbers(int32_t *arr, int size)
+{
     unsigned int seed = time(NULL);
 
     for (int i = 0; i < size; ++i)
@@ -98,15 +104,34 @@ void Mergesort::fillWithRandomNumbers(int32_t* arr, int size) {
     }
 }
 
-void Mergesort::print(const int32_t* arr, int size)
+void Mergesort::print(const int32_t *arr, int size)
 {
     if (size <= 0)
         return;
 
     cout << "[" << arr[0];
-    for (int i = 1; i < size; ++i)
+
+    if (size <= MAX_PRINT_SIZE)
     {
-        cout << ", " << arr[i];
+        // Print array
+        for (int i = 1; i < size; ++i)
+        {
+            cout << ", " << arr[i];
+        }
+    }
+    else
+    {
+        // Print fist and last part of a array
+        int i;
+        for (i = 1; i < MAX_PRINT_SIZE / 2; ++i)
+        {
+            cout << ", " << arr[i];
+        }
+        cout << ", ...";
+        for (i = size - i; i < size; ++i)
+        {
+            cout << ", " << arr[i];
+        }
     }
     cout << "]" << endl;
 }
