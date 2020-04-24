@@ -6,7 +6,7 @@ The two functions merge and sort are from https://www.geeksforgeeks.org/iterativ
 
 
 #define min(x, y) (x < y) ? x : y;
-
+#define MAX_PRINT_SIZE 20
 
 class Mergesort
 {

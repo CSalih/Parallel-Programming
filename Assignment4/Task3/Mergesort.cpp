@@ -104,9 +104,28 @@ void Mergesort::print(const int32_t* arr, int size)
         return;
 
     cout << "[" << arr[0];
-    for (int i = 1; i < size; ++i)
+
+    if (size <= MAX_PRINT_SIZE)
     {
-        cout << ", " << arr[i];
+        // Print array
+        for (int i = 1; i < size; ++i)
+        {
+            cout << ", " << arr[i];
+        }
+    }
+    else
+    {
+        // Print fist and last part of a array
+        int i;
+        for (i = 1; i < MAX_PRINT_SIZE / 2; ++i)
+        {
+            cout << ", " << arr[i];
+        }
+        cout << ", ...";
+        for (i = size - i; i < size; ++i)
+        {
+            cout << ", " << arr[i];
+        }
     }
     cout << "]" << endl;
 }
