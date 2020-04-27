@@ -8,7 +8,7 @@ The function mergeSort is from https://www.geeksforgeeks.org/merge-sort/.
 
 #define min(x, y) (x < y) ? x : y;
 
-#define MIN_MERGESORT_SIZE 20
+#define MIN_MERGESORT_SIZE 200000
 #define MAX_PRINT_SIZE 20
 
 

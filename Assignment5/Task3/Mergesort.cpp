@@ -69,10 +69,10 @@ void Mergesort::mergeSort(int32_t *arr, int l, int r)
         #pragma omp taskgroup
         {
             // Avoid small chunks with omp (https://stackoverflow.com/a/47495419)
-            #pragma omp task if (r - l >= MIN_MERGESORT_SIZE)
+            #pragma omp task shared(arr) if (r - l >= MIN_MERGESORT_SIZE)
             mergeSort(arr, l, m);
 
-            #pragma omp task if (r - l >= MIN_MERGESORT_SIZE)
+            #pragma omp task shared(arr) if (r - l >= MIN_MERGESORT_SIZE)
             mergeSort(arr, m + 1, r);
         }
         merge(arr, l, m, r);
