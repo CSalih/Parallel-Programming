@@ -18,15 +18,13 @@ find_package(OpenMP REQUIRED)
 
 
 # Add source to this project's executable.
-add_executable(MergesortRecursive "Task3/main.cpp" "Task3/Mergesort.cpp" "Task3/Mergesort.h")
 add_executable(Flush "Task2/flush.c")
+add_executable(NoFlush "Task2/noflush.c")
+add_executable(MergesortRecursive "Task3/main.cpp" "Task3/Mergesort.cpp" "Task3/Mergesort.h")
 
+target_link_libraries(Flush PRIVATE OpenMP::OpenMP_C)
+target_link_libraries(NoFlush PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(MergesortRecursive PRIVATE OpenMP::OpenMP_CXX)
-target_link_libraries(Flush PRIVATE OpenMP::OpenMP_CXX)
 
 set_target_properties(Flush PROPERTIES COMPILE_FLAGS "-O3" )
-
-
-# target_link_libraries(Example PRIVATE OpenMP::OpenMP_CXX)   # Link OpenMP
-# target_link_libraries(Example PRIVATE m)                    # Link math library
-# target_link_libraries(Example PRIVATE pthread)              # Link pthread
+set_target_properties(NoFlush PROPERTIES COMPILE_FLAGS "-O3" )
