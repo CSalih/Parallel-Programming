@@ -2,7 +2,7 @@
 # and include sub-projects here.
 cmake_minimum_required (VERSION 3.8)
 
-#project ("ParallelProgramming")
+project ("ParallelProgramming")
 
 # Include sub-projects.
 add_subdirectory ("Assignment1")
