@@ -19,8 +19,6 @@ find_package(OpenMP REQUIRED)
 
 # Add source to this project's executable.
 add_executable(Task1 "Task1/task1.c")
-add_executable(Close "Task1/task1close.c")
-add_executable(Spread "Task1/task1spread.c")
 
 add_executable(Flush "Task2/flush.c")
 add_executable(NoFlush "Task2/noflush.c")
@@ -30,8 +28,6 @@ add_executable(MergesortRecursive "Task3/main.cpp" "Task3/Mergesort.cpp" "Task3/
 
 # Link 
 target_link_libraries(Task1 PRIVATE OpenMP::OpenMP_C)
-target_link_libraries(Close PRIVATE OpenMP::OpenMP_C)
-target_link_libraries(Spread PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(Flush PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(NoFlush PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(MergesortRecursive PRIVATE OpenMP::OpenMP_CXX)
@@ -40,5 +36,3 @@ target_link_libraries(MergesortRecursive PRIVATE OpenMP::OpenMP_CXX)
 set_target_properties(Flush PROPERTIES COMPILE_FLAGS "-O3" )
 set_target_properties(NoFlush PROPERTIES COMPILE_FLAGS "-O3" )
 set_target_properties(Task1 PROPERTIES COMPILE_FLAGS "-O3" )
-set_target_properties(Close PROPERTIES COMPILE_FLAGS "-O3" )
-set_target_properties(Flush PROPERTIES COMPILE_FLAGS "-O3" )
