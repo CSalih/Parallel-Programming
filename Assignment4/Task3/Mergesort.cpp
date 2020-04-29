@@ -12,7 +12,9 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
     int n2 = r - m;
 
     /* create temp arrays */
-    int L[n1], R[n2];
+    /* create temp arrays */
+    int32_t *L = (int32_t *)malloc(sizeof(int32_t) * n1);
+    int32_t *R = (int32_t *)malloc(sizeof(int32_t) * n2);
 
     /* Copy data to temp arrays L[] and R[] */
     for (i = 0; i < n1; i++)
@@ -54,6 +56,9 @@ void Mergesort::merge(int32_t* arr, int l, int m, int r)
         j++;
         k++;
     }
+
+    free(L);
+    free(R);
 }
 
 void Mergesort::sort(int32_t* arr, int size)
