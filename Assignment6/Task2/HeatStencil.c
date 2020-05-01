@@ -19,6 +19,13 @@
 
 #define IND(y, x) ((y) * (N) + (x))
 
+ #define SWAP(x,y) do {   \ 
+   typeof(x) _x = x;      \
+   typeof(y) _y = y;      \
+   x = _y;                \
+   y = _x;                \
+ } while(0)
+
 void printTemperature(double *m, int N, int M);
 
 // -- simulation code ---
@@ -60,10 +67,19 @@ int main(int argc, char **argv) {
     // create a second buffer for the computation
     double *B = malloc(sizeof(double) * N * N);
     if(!B) PERROR_GOTO(error_b);
+
+    const double k = 0.001;
+
     // for each time step ..
     for (int t = 0; t < T; t++) {
         // todo implement heat propagation, if at corner, use own heat value
+        for(int i=1; i<N-1; i++) {
+            for(int j=1; j<N-1; j++) {
+                B[IND(i,j)] = A[IND(i,j)] + k*(A[IND(i -1 ,j)] + A[IND(i+1,j)] + A[IND(i,j-1)] + A[IND(i,j+1)] - 4*A[IND(i,j)]);
+            }
+        }
         // todo make sure the heat source stays the same
+        SWAP(A, B);
 
         // every 1000 steps show intermediate step
         if (!(t % 1000)) {
