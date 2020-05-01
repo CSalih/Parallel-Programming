@@ -19,6 +19,7 @@ add_executable(HeatStencil "Task2/HeatStencil.c")
 # Link 
 target_link_libraries(CalcFolderSize PRIVATE OpenMP::OpenMP_C)
 target_link_libraries(HeatStencil PRIVATE OpenMP::OpenMP_C)
+target_link_libraries(HeatStencil PRIVATE m)
 
 
 # Compiler flags

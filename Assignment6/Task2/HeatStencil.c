@@ -1,11 +1,17 @@
+/*
+    Source of calculation logic: https://github.com/allscale/allscale_api/wiki/HeatStencil
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <omp.h>
 #include <string.h>
+#include <math.h>
 
 #define RESOLUTION_WIDTH 50
 #define RESOLUTION_HEIGHT 50
+#define HEAT_SOURCE_TEMP 273 + 60
 
 #define PERROR fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, strerror(errno))
 #define PERROR_GOTO(label) \
@@ -14,17 +20,18 @@
 		goto label; \
 	} while (0)
 
-
 // -- vector utilities --
-
 #define IND(y, x) ((y) * (N) + (x))
 
- #define SWAP(x,y) do {   \ 
-   typeof(x) _x = x;      \
-   typeof(y) _y = y;      \
-   x = _y;                \
-   y = _x;                \
- } while(0)
+#define SWAP(x,y) do { \
+        __typeof__(x) _x = x; \
+        __typeof__(y) _y = y; \
+        x = _y; \
+        y = _x; \
+    } while(0)
+
+#define FLOAT_EQUALS(x, y) fabs(x - y) < 0.001
+
 
 void printTemperature(double *m, int N, int M);
 
@@ -56,7 +63,7 @@ int main(int argc, char **argv) {
     // and there is a heat source
     int source_x = N / 4;
     int source_y = N / 4;
-    A[IND(source_x,source_y)] = 273 + 60;
+    A[IND(source_x,source_y)] = HEAT_SOURCE_TEMP;
 
     printf("Initial:");
     printTemperature(A, N, N);
@@ -75,11 +82,23 @@ int main(int argc, char **argv) {
         // todo implement heat propagation, if at corner, use own heat value
         for(int i=1; i<N-1; i++) {
             for(int j=1; j<N-1; j++) {
-                B[IND(i,j)] = A[IND(i,j)] + k*(A[IND(i -1 ,j)] + A[IND(i+1,j)] + A[IND(i,j-1)] + A[IND(i,j+1)] - 4*A[IND(i,j)]);
+                B[IND(i,j)] = A[IND(i,j)] + k * (
+                        A[IND(i-1 ,j)] + 
+                        A[IND(i+1,j)] + 
+                        A[IND(i,j-1)] + 
+                        A[IND(i,j+1)] -
+                        4 * A[IND(i,j)]
+                    );
             }
         }
         // todo make sure the heat source stays the same
+        if (FLOAT_EQUALS(B[IND(source_x,source_y)], HEAT_SOURCE_TEMP)) {
+            fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", A[IND(source_x,source_y)]);
+            errno = ECANCELED;
+            PERROR_GOTO(error_b);
+        }
         SWAP(A, B);
+
 
         // every 1000 steps show intermediate step
         if (!(t % 1000)) {
