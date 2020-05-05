@@ -8,6 +8,7 @@
 #define RESOLUTION_WIDTH 50
 #define RESOLUTION_HEIGHT 50
 #define HEAT_SOURCE_TEMP 333.00f  // 273 + 60 K
+#define DELTA_TIME 0.02f
 
 #define PERROR fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, strerror(errno))
 #define PERROR_GOTO(label) \
@@ -88,8 +89,7 @@ int main(int argc, char **argv) {
                     u = A[IND(i, j - 1)];
                     d = A[IND(i, j + 1)];
 
-                    // formula from lecture slides to calculate new A value
-                    B[IND(i, j)] = ((l + r + u + d) / 4 - A[IND(i, j)]) * 0.02 + A[IND(i, j)];
+                    B[IND(i, j)] = ((l + r + u + d) / 4 - A[IND(i, j)]) * DELTA_TIME + A[IND(i, j)];
                 }
             }
         }
