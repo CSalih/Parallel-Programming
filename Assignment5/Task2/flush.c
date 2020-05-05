@@ -1,40 +1,30 @@
 #include <omp.h>
-#include <stdio.h> 
-#include <stdlib.h> 
-int main() {
-   int data, flag = 0;
+#include <stdio.h>
+#include <stdlib.h>
 
-   #pragma omp parallel num_threads(2)
-   {
-      if (omp_get_thread_num()==0) {
-         data = 42;
-	#pragma omp flush(data)  
-	//Schreibt vom Cache in den gemeinsamen Speicher
-	//Garantiert richtigen Wert, falls flag=1 durch die Optimierung vor data=42 ausgeführt
-	//Ohne Flush möglicherweise undefiniert
+int main(void) {
+    int data, flag = 0;
 
-         flag = 1;
-	#pragma omp flush(flag)
-	// Schreibt vom Cache in den gemeinsamen Speicher
-	// Kann auch ohne Flush durchlaufen aber keine Garantie, 
-	// dass die Zeile verdrängt wird, daher zurückgeschrieben wird.
+#pragma omp parallel num_threads(2)
+    {
+        if (omp_get_thread_num() == 0) {
+            data = 42;
+#pragma omp flush(flag, data)
+            flag = 1;
+#pragma omp flush(flag)
 
-      }
-      else if (omp_get_thread_num()==1) {
-
-	#pragma omp flush(flag)
-	// Nicht unbedingt notwendig, flag=0 würde nur die Schleife einmal mehr wiederholen
-
-         while (flag < 1) {
-		#pragma omp flush(flag)
-		// Muss FAST sicher gesetzt werden, wenn T1 flag liest bevor T0 flag schreibt
-		// Höchst unwarscheinlich, dass flag verdrängt wird und der aktuelle Stand vom Cache
-
-         }
-         /* print flag and data */
-	#pragma omp flush(data) // Garantiert richtigen Wert
-         printf("flag=%d data=%d\n", flag, data);
-      }
-   } // Hier auto flush
-   return 0;
+        } else if (omp_get_thread_num() == 1) {
+/* Loop until we see the update to the flag */
+#pragma omp flush(flag, data)
+            while (flag < 1) {
+#pragma omp flush(flag, data)
+            }
+            /* Values of flag and data are undefined */
+            printf("flag=%d data=%d\n", flag, data);
+#pragma omp flush(flag, data)
+            /* Values data will be 42, value of flag still undefined */
+            printf("flag=%d data=%d\n", flag, data);
+        }
+    }
+    return 0;
 }
