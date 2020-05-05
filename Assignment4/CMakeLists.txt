@@ -24,7 +24,7 @@ add_executable (Pthread "Task1/Pthread.c")
 
 # Task 2
 add_executable (ex2 "Task2/ex2.c")
-add_executable (ex2_b "Task2/ex2_b.c")
+add_executable (ex2_b "Task2/ex2_optimize.c")
 
 
 target_link_libraries(Mergesort PRIVATE OpenMP::OpenMP_CXX)
