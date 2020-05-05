@@ -2,12 +2,12 @@
     Source of calculation logic: https://github.com/allscale/allscale_api/wiki/HeatStencil
 */
 
+#include <errno.h>
+#include <math.h>
+#include <omp.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <errno.h>
-#include <omp.h>
 #include <string.h>
-#include <math.h>
 
 #define RESOLUTION_WIDTH 50
 #define RESOLUTION_HEIGHT 50
@@ -15,23 +15,23 @@
 
 #define PERROR fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, strerror(errno))
 #define PERROR_GOTO(label) \
-	do { \
-		PERROR; \
-		goto label; \
-	} while (0)
+    do {                   \
+        PERROR;            \
+        goto label;        \
+    } while (0)
 
 // -- vector utilities --
 #define IND(y, x) ((y) * (N) + (x))
 
-#define SWAP(x,y) do { \
+#define SWAP(x, y)            \
+    do {                      \
         __typeof__(x) _x = x; \
         __typeof__(y) _y = y; \
-        x = _y; \
-        y = _x; \
-    } while(0)
+        x = _y;               \
+        y = _x;               \
+    } while (0)
 
 #define FLOAT_EQUALS(x, y) fabs(x - y) < 0.001
-
 
 void printTemperature(double *m, int N, int M);
 
@@ -49,21 +49,28 @@ int main(int argc, char **argv) {
     // ---------- setup ----------
 
     // create a buffer for storing temperature fields
-    double *A =  malloc(sizeof(double) * N * N);
+    double *A = malloc(sizeof(double) * N * N);
+    if (!A)
+        PERROR_GOTO(error_a);
 
-    if(!A) PERROR_GOTO(error_a);
+    // create a second buffer for the computation
+    double *B = malloc(sizeof(double) * N * N);
+    if (!B)
+        PERROR_GOTO(error_b);
 
-    // set up initial conditions in A
+// set up initial conditions in A
+#pragma omp parallel for
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
-            A[IND(i,j)] = 273; // temperature is 0° C everywhere (273 K)
+            A[IND(i, j)] = 273;  // temperature is 0° C everywhere (273 K)
+            B[IND(i, j)] = 273;
         }
     }
 
     // and there is a heat source
     int source_x = N / 4;
     int source_y = N / 4;
-    A[IND(source_x,source_y)] = HEAT_SOURCE_TEMP;
+    A[IND(source_x, source_y)] = HEAT_SOURCE_TEMP;
 
     printf("Initial:");
     printTemperature(A, N, N);
@@ -71,34 +78,32 @@ int main(int argc, char **argv) {
 
     // ---------- compute ----------
 
-    // create a second buffer for the computation
-    double *B = malloc(sizeof(double) * N * N);
-    if(!B) PERROR_GOTO(error_b);
-
-    const double k = 0.001;
-
     // for each time step ..
     for (int t = 0; t < T; t++) {
-        // todo implement heat propagation, if at corner, use own heat value
-        for(int i=1; i<N-1; i++) {
-            for(int j=1; j<N-1; j++) {
-                B[IND(i,j)] = A[IND(i,j)] + k * (
-                        A[IND(i-1 ,j)] + 
-                        A[IND(i+1,j)] + 
-                        A[IND(i,j-1)] + 
-                        A[IND(i,j+1)] -
-                        4 * A[IND(i,j)]
-                    );
+    // Heat propagation, will use own heat on corner (1 to N-1)
+#pragma omp parallel for
+        for (int i = 1; i < N - 1; i++) {
+            for (int j = 1; j < N - 1; j++) {
+                double l, r, u, d;
+                // don't change the value if heat source
+                if (i != source_x && j != source_y) {
+                    l = A[IND(i - 1, j)];
+                    r = A[IND(i + 1, j)];
+                    u = A[IND(i, j - 1)];
+                    d = A[IND(i, j + 1)];
+
+                    // formula from lecture slides to calculate new A value
+                    B[IND(i, j)] = (l + r + u + d + A[IND(i, j)]) / 5;
+                }
             }
         }
         // todo make sure the heat source stays the same
-        if (FLOAT_EQUALS(B[IND(source_x,source_y)], HEAT_SOURCE_TEMP)) {
-            fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", A[IND(source_x,source_y)]);
+        if (FLOAT_EQUALS(B[IND(source_x, source_y)], HEAT_SOURCE_TEMP)) {
+            fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", A[IND(source_x, source_y)]);
             errno = ECANCELED;
             PERROR_GOTO(error_b);
         }
         SWAP(A, B);
-
 
         // every 1000 steps show intermediate step
         if (!(t % 1000)) {
@@ -108,9 +113,7 @@ int main(int argc, char **argv) {
         }
     }
 
-
     // ---------- check ----------
-
     printf("Final:");
     printTemperature(A, N, N);
     printf("\n");
@@ -119,7 +122,7 @@ int main(int argc, char **argv) {
     int success = 1;
     for (long long i = 0; i < N; i++) {
         for (long long j = 0; j < N; j++) {
-            double temp = A[IND(i,j)];
+            double temp = A[IND(i, j)];
             if (273 <= temp && temp <= 273 + 60)
                 continue;
             success = 0;
@@ -129,10 +132,10 @@ int main(int argc, char **argv) {
 
     printf("Verification: %s\n", (success) ? "OK" : "FAILED");
 
-    // todo ---------- cleanup ----------
-    error_b:
+// ---------- cleanup ----------
+error_b:
     free(B);
-    error_a:
+error_a:
     free(A);
     return (success) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
@@ -169,7 +172,7 @@ void printTemperature(double *m, int N, int M) {
             double max_t = 0;
             for (int x = sH * i; x < sH * i + sH; x++) {
                 for (int y = sW * j; y < sW * j + sW; y++) {
-                    max_t = (max_t < m[IND(x,y)]) ? m[IND(x,y)] : max_t;
+                    max_t = (max_t < m[IND(x, y)]) ? m[IND(x, y)] : max_t;
                 }
             }
             double temp = max_t;
