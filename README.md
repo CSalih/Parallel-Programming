@@ -36,5 +36,5 @@ $ cd Project_Dir/Assignment[N]
 $ mkdir build
 $ cd build
 $ cmake ..
-$ cmake --build .
+$ make
 ```
