@@ -7,7 +7,7 @@
 
 #define RESOLUTION_WIDTH 50
 #define RESOLUTION_HEIGHT 50
-#define HEAT_SOURCE_TEMP 273 + 60
+#define HEAT_SOURCE_TEMP 333.00f  // 273 + 60 K
 
 #define PERROR fprintf(stderr, "%s:%d: error: %s\n", __FILE__, __LINE__, strerror(errno))
 #define PERROR_GOTO(label) \
@@ -27,7 +27,7 @@
         y = _x;               \
     } while (0)
 
-#define FLOAT_EQUALS(x, y) fabs(x - y) < 0.001
+#define FLOAT_EQUALS(x, y) fabs(x - y) < 0.01
 
 void printTemperature(double *m, int N, int M);
 
@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     if (!B)
         PERROR_GOTO(error_b);
 
-// set up initial conditions in A
+        // set up initial conditions in A
 #pragma omp parallel for collapse(2)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
@@ -67,39 +67,40 @@ int main(int argc, char **argv) {
     int source_x = N / 4;
     int source_y = N / 4;
     A[IND(source_x, source_y)] = HEAT_SOURCE_TEMP;
+    B[IND(source_x, source_y)] = HEAT_SOURCE_TEMP;
 
     printf("Initial:");
     printTemperature(A, N, N);
     printf("\n");
 
     // ---------- compute ----------
-
     // for each time step ..
     for (int t = 0; t < T; t++) {
-    // Heat propagation, will use own heat on corner (1 to N-1)
+        // Heat propagation, will use own heat on corner (1 to N-1)
 #pragma omp parallel for collapse(2)
         for (int i = 1; i < N - 1; i++) {
             for (int j = 1; j < N - 1; j++) {
                 double l, r, u, d;
                 // don't change the value if heat source
-                if (i != source_x && j != source_y) {
+                if (IND(source_x, source_y) != IND(i, j)) {
                     l = A[IND(i - 1, j)];
                     r = A[IND(i + 1, j)];
                     u = A[IND(i, j - 1)];
                     d = A[IND(i, j + 1)];
 
                     // formula from lecture slides to calculate new A value
-                    B[IND(i, j)] = (l + r + u + d + A[IND(i, j)]) / 5;
+                    B[IND(i, j)] = ((l + r + u + d) / 4 - A[IND(i, j)]) * 0.02 + A[IND(i, j)];
                 }
             }
         }
 
         // todo make sure the heat source stays the same
-        if (FLOAT_EQUALS(B[IND(source_x, source_y)], HEAT_SOURCE_TEMP)) {
+        if (!FLOAT_EQUALS(B[IND(source_x, source_y)], HEAT_SOURCE_TEMP)) {
             fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", B[IND(source_x, source_y)]);
             errno = ECANCELED;
             PERROR_GOTO(error_b);
         }
+
         SWAP(A, B);
 
         // every 1000 steps show intermediate step
