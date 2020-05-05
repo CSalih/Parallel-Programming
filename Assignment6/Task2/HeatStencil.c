@@ -1,7 +1,3 @@
-/*
-    Source of calculation logic: https://github.com/allscale/allscale_api/wiki/HeatStencil
-*/
-
 #include <errno.h>
 #include <math.h>
 #include <omp.h>
@@ -59,7 +55,7 @@ int main(int argc, char **argv) {
         PERROR_GOTO(error_b);
 
 // set up initial conditions in A
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++) {
             A[IND(i, j)] = 273;  // temperature is 0° C everywhere (273 K)
@@ -81,7 +77,7 @@ int main(int argc, char **argv) {
     // for each time step ..
     for (int t = 0; t < T; t++) {
     // Heat propagation, will use own heat on corner (1 to N-1)
-#pragma omp parallel for
+#pragma omp parallel for collapse(2)
         for (int i = 1; i < N - 1; i++) {
             for (int j = 1; j < N - 1; j++) {
                 double l, r, u, d;
@@ -97,9 +93,10 @@ int main(int argc, char **argv) {
                 }
             }
         }
+
         // todo make sure the heat source stays the same
         if (FLOAT_EQUALS(B[IND(source_x, source_y)], HEAT_SOURCE_TEMP)) {
-            fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", A[IND(source_x, source_y)]);
+            fprintf(stderr, "Error: Heat source changed! Source heat = %.2fF\n", B[IND(source_x, source_y)]);
             errno = ECANCELED;
             PERROR_GOTO(error_b);
         }
