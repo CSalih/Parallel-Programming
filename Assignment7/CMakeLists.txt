@@ -8,6 +8,9 @@ project (Assignment6)
 add_executable(Parallel "Task1/Parallel.c")
 add_executable(Seriell "Task1/Seriell.c")
 
+add_executable(NQueensSeq "Task2/NQueensSeq.c")
+
+
 set_target_properties(Seriell PROPERTIES COMPILE_FLAGS "-O3" )
 
 # Compiler configuration
