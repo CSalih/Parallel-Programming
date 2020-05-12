@@ -1,84 +1,74 @@
 /**
- * Author: Sahil Chhabra (https://www.geeksforgeeks.org/printing-solutions-n-queen-problem/) 
- */
-#include <stdbool.h>
+ * Author: https://www.dreamincode.net/forums/topic/336580-recursive-algorithm-for-n-queens-problem/
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <omp.h>
 
-// Solution counter
-int counter;
+unsigned int solutions;
 
-/**
- * A utility function to check if a queen can be placed on board[row][col]. Note that this 
- * function is called when "col" queens are already placed in columns from 0 to col -1. 
- * So we need to check only left side for attacking queens
- */
-bool isSafe(int N, int board[N][N], int row, int col) {
-    int i, j;
-
-    /* Check this row on left side */
-    for (i = 0; i < col; i++)
-        if (board[row][i])
-            return false;
-
-    /* Check upper diagonal on left side */
-    for (i = row, j = col; i >= 0 && j >= 0; i--, j--)
-        if (board[i][j])
-            return false;
-
-    /* Check lower diagonal on left side */
-    for (i = row, j = col; j >= 0 && i < N; i++, j--)
-        if (board[i][j])
-            return false;
-
-    return true;
-}
-
-/**
- *  A recursive utility function to solve N Queen problem
- */
-int solveNQUtil(int N, int board[N][N], int col) {
-    // All queens are placed
-    if (col == N) {
-        return ++counter;
+void setQueen(int queens[], int row, int col, int size) 
+{
+    //check all previously placed rows for attacks
+    for(int i = 0; i < row; i++) {
+        // vertical clashes
+        if (queens[i] == col) {
+            return;
+        }
+        // diagonal clashes
+        if (abs(queens[i] - col) == (row - i)) {
+            return;
+        }
     }
+    // no clashes found is ok, set the queen
+    queens[row] = col;
 
-    // Consider this column and try placing this queen in all rows one by one
-    for (int i = 0; i < N; i++) {
-        // Check if queen can be placed on board[i][col]
-        if (isSafe(N, board, i, col)) {
-            // Place this queen in board[i][col]
-            board[i][col] = 1;
-
-            solveNQUtil(N, board, col + 1);
-
-            // Doesn't lead to a solution do Backtrack
-            board[i][col] = 0;
+    // if we're at the end of the rows
+    if(row == size - 1) {
+        #pragma omp atomic
+        solutions++;  // found a solution
+    }
+    // else we'll try to fill next row
+    else {
+        for(int i = 0; i < size; i++) {
+            setQueen(queens, row + 1, i, size);
         }
     }
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2) {
-        fprintf(stderr, "Argument missing! ./NQueensSerial n\n");
+// function to find the solutions
+void solve(int size) 
+{
+    for(int i = 0; i < size; i++) {
+        // array representing queens placed on a chess board. Index is row, value is column.
+        int *queens = malloc(sizeof(int)*size); 
+        setQueen(queens, 0, i, size);
+        free(queens);
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    double start_time, end_time;
+	
+    if (argc != 2){
+        printf("ERROR! Usage: ./executable size\n");
         return EXIT_FAILURE;
     }
+    
+    int size = atoi(argv[1]);
+	          
+    start_time = omp_get_wtime();
 
-    // Get size of array
-    int n = atoi(argv[argc - 1]);
-    if (n <= 0 || n > 27) {
-        fprintf(stderr, "Invalid input! Size must between 0 and 27.\n");
-        return EXIT_FAILURE;
-    }
-
-    // Init board
-    int board[n][n];
-    memset(board, 0, sizeof(board));
-
-    // Calculate
-    solveNQUtil(n, board, 0);
-    printf("There are %d possible solutions\n", counter);
-
-    return EXIT_SUCCESS;
+    solve(size);
+  
+    // get end time
+    end_time = omp_get_wtime();
+    // print results
+    printf("Sequential Solution with a size of n = %d\n", size);
+    printf("The execution time is %g sec\n", end_time - start_time);
+    printf("Number of found solutions is %d\n", solutions);
+    
+	return EXIT_SUCCESS;
 }

@@ -1,73 +1,78 @@
 /**
- * Author: http://rosettacode.org/wiki/N-queens_problem#C
- */ 
+ * Author: https://www.dreamincode.net/forums/topic/336580-recursive-algorithm-for-n-queens-problem/
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 
-#define MAXN 27
+unsigned int solutions;
 
-int nQueens(int n) {
-    int q0, q1;
-    int cols[MAXN], diagl[MAXN], diagr[MAXN], posibs[MAXN];  // Our backtracking 'stack'
-    int num = 0;
-    //
-    // The top level is two fors, to save one bit of symmetry in the enumeration by forcing second queen to
-    // be AFTER the first queen.
-    //
-    // #pragma omp parallel for collapse(2)
-    for (q0 = 0; q0 < n - 2; q0++) {
-        for (q1 = q0 + 2; q1 < n; q1++) {
-            int bit0 = 1 << q0;
-            int bit1 = 1 << q1;
-            int d = 0;                          // d is our depth in the backtrack stack
-            cols[0] = bit0 | bit1 | (-1 << n);  // The -1 here is used to fill all 'coloumn' bits after n ...
-            diagl[0] = (bit0 << 1 | bit1) << 1;
-            diagr[0] = (bit0 >> 1 | bit1) >> 1;
-
-            //  The variable posib contains the bitmask of possibilities we still have to try in a given row ...
-            int posib = ~(cols[0] | diagl[0] | diagr[0]);
-
-            while (d >= 0) {
-                while (posib) {
-                    int bit = posib & -posib;  // The standard trick for getting the rightmost bit in the mask
-                    int ncols = cols[d] | bit;
-                    int ndiagl = (diagl[d] | bit) << 1;
-                    int ndiagr = (diagr[d] | bit) >> 1;
-                    int nposib = ~(ncols | ndiagl | ndiagr);
-                    posib ^= bit;  // Eliminate the tried possibility.
-
-                    num += ncols == -1;
-
-                    if (nposib) {
-                        if (posib) {              // This if saves stack depth + backtrack operations when we passed the last possibility in a row.
-                            posibs[d++] = posib;  // Go lower in stack ..
-                        }
-                        cols[d] = ncols;
-                        diagl[d] = ndiagl;
-                        diagr[d] = ndiagr;
-                        posib = nposib;
-                    }
-                }
-                posib = posibs[--d];  // backtrack ...
-            }
+void setQueen(int queens[], int row, int col, int size) 
+{
+    //check all previously placed rows for attacks
+    for(int i = 0; i < row; i++) {
+        // vertical clashes
+        if (queens[i] == col) {
+            return;
+        }
+        // diagonal clashes
+        if (abs(queens[i] - col) == (row - i)) {
+            return;
         }
     }
-    return num * 2;
+    // no clashes found is ok, set the queen
+    queens[row] = col;
+
+    // if we're at the end of the rows
+    if(row == size - 1) {
+        #pragma omp atomic
+        solutions++;  // found a solution
+    }
+    // else we'll try to fill next row
+    else {
+        for(int i = 0; i < size; i++) {
+            setQueen(queens, row + 1, i, size);
+        }
+    }
 }
 
-int main(int argc, char **argv) {
-    if (argc != 2) {
-        fprintf(stderr, "Argument missing! ./NQueensSerial n\n");
+// function to find the solutions
+void solve(int size) 
+{
+    #pragma omp parallel for
+    for(int i = 0; i < size; i++) {
+        // array representing queens placed on a chess board. Index is row, value is column.
+        int *queens = malloc(sizeof(int)*size); 
+        setQueen(queens, 0, i, size);
+        free(queens);
+    }
+}
+
+int main(int argc, char* argv[])
+{
+    double start_time, end_time;
+    int num_threads;
+	
+    if (argc != 3){
+        printf("ERROR! Usage: ./executable size numThreads\n");
         return EXIT_FAILURE;
     }
+    
+    num_threads = atoi(argv[2]);
+    int size = atoi(argv[1]);
+    omp_set_num_threads(num_threads);
+	          
+    start_time = omp_get_wtime();
 
-    // Get size of array
-    int n = atoi(argv[argc - 1]);
-    if (n <= 0 || n > 27) {
-        fprintf(stderr, "Invalid input! Size must between 0 and 27.\n");
-        return EXIT_FAILURE;
-    }
-
-    printf("Number of solution for %d is %d\n", n, nQueens(n));
-    return EXIT_SUCCESS;
+    solve(size);
+  
+    // get end time
+    end_time = omp_get_wtime();
+    // print results
+    printf("Sequential Solution with a size of n = %d and %d Threads:\n", size, num_threads);
+    printf("The execution time is %g sec\n", end_time - start_time);
+    printf("Number of found solutions is %d\n", solutions);
+    
+	return EXIT_SUCCESS;
 }
