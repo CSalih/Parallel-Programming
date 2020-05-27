@@ -2,7 +2,7 @@
 cmake_minimum_required (VERSION 2.8)
 
 # Project name
-project (Assignment6)
+project (Assignment8)
 
 # Add source to this project's executable.
 add_executable(Analysis "Task2/Analysis.c")
