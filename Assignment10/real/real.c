@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
+#include <omp.h>
 #include "globals.h"
 #include "randdp.h"
 #include "timers.h"
@@ -339,6 +339,7 @@ static void setup(int *n1, int *n2, int *n3)
       ng[k][ax] = ng[k+1][ax]/2;
     }
   }
+
   for (k = lt; k >= 1; k--) {
     nx[k] = ng[k][0];
     ny[k] = ng[k][1];
@@ -392,6 +393,8 @@ static void mg3P(double u[], double v[], double r[],
   // down cycle.
   // restrict the residual from the find grid to the coarse
   //---------------------------------------------------------------------
+	
+
   for (k = lt; k >= lb+1; k--) {
     j = k - 1;
     rprj3(&r[ir[k]], m1[k], m2[k], m3[k],
@@ -458,25 +461,42 @@ static void psinv(void *or, void *ou, int n1, int n2, int n3,
 	
 	// Abhängigkeiten:(r1,r2) L4 von L3 abhängig
 	// keine Abhängigkeiten: (r) read only, (u) write only
-  
-
 
   if (timeron) timer_start(T_psinv);
-	#pragma omp parallel for collapse(2)
+  #pragma omp parallel for collapse(2)
   for (int i3 = 1; i3 < n3-1; i3++) { // L1
     for (int i2 = 1; i2 < n2-1; i2++) { // L2 
 		double r1[M], r2[M];
+	/*
+	for (int i1 = 0; i1 < n1; i1++) { // L3
+        r1[i1] = r[i3][i2-1][i1] + r[i3][i2+1][i1] + r[i3-1][i2][i1] + r[i3+1][i2][i1];
+        r2[i1] = r[i3-1][i2-1][i1] + r[i3-1][i2+1][i1] + r[i3+1][i2-1][i1] + r[i3+1][i2+1][i1];
+      }
+	*/	  
+   if(n1<8)// für 64byte cacheline; kaum messbarer vorteil
       for (int i1 = 0; i1 < n1; i1++) { // L3
         r1[i1] = r[i3][i2-1][i1] + r[i3][i2+1][i1] + r[i3-1][i2][i1] + r[i3+1][i2][i1];
         r2[i1] = r[i3-1][i2-1][i1] + r[i3-1][i2+1][i1] + r[i3+1][i2-1][i1] + r[i3+1][i2+1][i1];
       }
+	else{
+	      for (int i1 = 0; i1 < n1; i1++) // L3.1
+	       	r1[i1] = r[i3][i2-1][i1] + r[i3][i2+1][i1] + r[i3-1][i2][i1] + r[i3+1][i2][i1];
+ 	      for (int i1 = 0; i1 < n1; i1++)   // L3.2    	
+		r2[i1] = r[i3-1][i2-1][i1] + r[i3-1][i2+1][i1] + r[i3+1][i2-1][i1] + r[i3+1][i2+1][i1];
+	}
+	/*
       for (int i1 = 1; i1 < n1-1; i1++) { // L4
         u[i3][i2][i1] += c[0] * r[i3][i2][i1]
-                      + c[1] * ( r[i3][i2][i1-1] + r[i3][i2][i1+1]
-                               + r1[i1] )
-                      + c[2] * ( r2[i1] + r1[i1-1] + r1[i1+1] );
-
+                       + c[1] * (r[i3][i2][i1-1] + r[i3][i2][i1+1]+ r1[i1] )
+                       + c[2] * ( r2[i1] + r1[i1-1] + r1[i1+1] );
       }
+	*/
+	double c0=c[0],c1=c[1],c2=c[2]; // herausgezogen
+      for (int i1 = 1; i1 < n1-1; i1++) { // L4
+        u[i3][i2][i1] += c0 * r[i3][i2][i1]
+                       + c1 * (r[i3][i2][i1-1] + r[i3][i2][i1+1]+ r1[i1] )
+                       + c2 * ( r2[i1] + r1[i1-1] + r1[i1+1] );
+      }		
     }
   }
   if (timeron) timer_stop(T_psinv);
@@ -527,7 +547,7 @@ static void resid(void *ou, void *ov, void *or, int n1, int n2, int n3,
   if (timeron) timer_start(T_resid);
   if(n1*n2*n3 > 100){ // kleine jobs nicht parllelisieren
 	  
-	  #pragma omp parallel for
+	  #pragma omp parallel for collapse(2)
 	  for (int i3 = 1; i3 < n3-1; i3++) { // L1
 		for (int i2 = 1; i2 < n2-1; i2++) { // L2
 			double u1[M], u2[M]; // verschoben
@@ -592,9 +612,10 @@ static void rprj3(void *or, int m1k, int m2k, int m3k,
   double (*r)[m2k][m1k] = (double (*)[m2k][m1k])or;
   double (*s)[m2j][m1j] = (double (*)[m2j][m1j])os;
 
-  int j3, j2, j1, i3, i2, i1, d1, d2, d3, j;
-
-  double x1[M], y1[M], x2, y2;
+  //int i3, i2, i1,
+	int d1, d2, d3;
+	//j3, j2, j1
+  //double x1[M], y1[M], x2, y2;
 
   if (timeron) timer_start(T_rprj3);
   if (m1k == 3) {
@@ -614,41 +635,48 @@ static void rprj3(void *or, int m1k, int m2k, int m3k,
   } else {
     d3 = 1;
   }
-
-  for (j3 = 1; j3 < m3j-1; j3++) {
-    i3 = 2*j3-d3;
-    for (j2 = 1; j2 < m2j-1; j2++) {
-      i2 = 2*j2-d2;
-
-      for (j1 = 1; j1 < m1j; j1++) {
-        i1 = 2*j1-d1;
+	//seriell: 2.22s 74%
+	//parallel: 1.85s 71.5%
+  #pragma omp parallel for firstprivate(d1,d2,d3) collapse(1) 
+  for (int j3 = 1; j3 < m3j-1; j3++) {
+		int i3 = 2*j3-d3;
+    for (int j2 = 1; j2 < m2j-1; j2++) {
+      	int i2 = 2*j2-d2;
+		  double x1[M], y1[M], x2, y2;// verschoben
+		// keine Abhängigkeiten: x1,y1,r,i1,i2,3
+      for (int j1 = 1; j1 < m1j; j1++) {
+        int i1 = 2*j1-d1;
         x1[i1] = r[i3+1][i2  ][i1] + r[i3+1][i2+2][i1]
                + r[i3  ][i2+1][i1] + r[i3+2][i2+1][i1];
         y1[i1] = r[i3  ][i2  ][i1] + r[i3+2][i2  ][i1]
                + r[i3  ][i2+2][i1] + r[i3+2][i2+2][i1];
       }
-
-      for (j1 = 1; j1 < m1j-1; j1++) {
-        i1 = 2*j1-d1;
-        y2 = r[i3  ][i2  ][i1+1] + r[i3+2][i2  ][i1+1]
-           + r[i3  ][i2+2][i1+1] + r[i3+2][i2+2][i1+1];
-        x2 = r[i3+1][i2  ][i1+1] + r[i3+1][i2+2][i1+1]
-           + r[i3  ][i2+1][i1+1] + r[i3+2][i2+1][i1+1];
+		// abhängig von vorherigen schleife
+		int tmp=0;// ADDED
+      for (int j1 = 1; j1 < m1j-1; j1++) {
+		  tmp+=2; 
+          int i1 = tmp-d1+1;
+		  int tmp2=tmp-d1;
+        y2 = r[i3  ][i2  ][i1] + r[i3+2][i2  ][i1]
+           + r[i3  ][i2+2][i1] + r[i3+2][i2+2][i1];
+        x2 = r[i3+1][i2  ][i1] + r[i3+1][i2+2][i1]
+           + r[i3  ][i2+1][i1] + r[i3+2][i2+1][i1];
         s[j3][j2][j1] =
-                0.5 * r[i3+1][i2+1][i1+1]
-              + 0.25 * (r[i3+1][i2+1][i1] + r[i3+1][i2+1][i1+2] + x2)
-              + 0.125 * (x1[i1] + x1[i1+2] + y2)
-              + 0.0625 * (y1[i1] + y1[i1+2]);
+                0.5 * r[i3+1][i2+1][i1]
+              + 0.25 * (r[i3+1][i2+1][i1-1] + r[i3+1][i2+1][i1+1] + x2)
+              + 0.125 * (x1[i1-1] + x1[i1+1] + y2)
+              + 0.0625 * (y1[i1-1] + y1[i1+1]);
       }
+		
     }
   }
   if (timeron) timer_stop(T_rprj3);
 
-  j = k-1;
+  int j = k-1;
   comm3(s, m1j, m2j, m3j, j);
 
   if (debug_vec[0] >= 1) {
-    rep_nrm(s, m1j, m2j, m3j, "   rprj3", k-1);
+    rep_nrm(s, m1j, m2j, m3j, "   rprj3", j);
   }
 
   if (debug_vec[4] >= k) {
@@ -892,22 +920,35 @@ static void comm3(void *ou, int n1, int n2, int n3, int kk)
 
 	#pragma omp parallel for // loop indipendend u[i3]
   for (int i3 = 1; i3 < n3-1; i3++) {
-    for (int i2 = 1; i2 < n2-1; i2++) {
+    for (int i2 = 1; i2 < n2-1; i2++) { // loaklität für Gruppe(u[i3][i2][n1-2],u[i3][i2][n1-1])
       u[i3][i2][   0] = u[i3][i2][n1-2];
       u[i3][i2][n1-1] = u[i3][i2][   1];
     }
+
     for (int i1 = 0; i1 < n1; i1++) {
       u[i3][   0][i1] = u[i3][n2-2][i1];// abhängigkeit  n2-2 bei oberer schleife
       u[i3][n2-1][i1] = u[i3][   1][i1];
     }
   }
-	#pragma omp parallel for 
-  for (int i2 = 0; i2 < n2; i2++) {
-    for (int i1 = 0; i1 < n1; i1++) {
-      u[   0][i2][i1] = u[n3-2][i2][i1];
-      u[n3-1][i2][i1] = u[   1][i2][i1];     
-    }
-  }
+
+	if(n1*n2>100){
+		#pragma omp parallel for 
+	  for (int i2 = 0; i2 < n2; i2++) {
+		for (int i1 = 0; i1 < n1; i1++) {
+		  u[   0][i2][i1] = u[n3-2][i2][i1];
+		  u[n3-1][i2][i1] = u[   1][i2][i1]; 
+
+		}
+	  }
+	}
+	else{
+	  for (int i2 = 0; i2 < n2; i2++) {
+		for (int i1 = 0; i1 < n1; i1++) {
+		  u[   0][i2][i1] = u[n3-2][i2][i1];
+		  u[n3-1][i2][i1] = u[   1][i2][i1];     
+		}
+	  }
+	}
   if (timeron) timer_stop(T_comm3);
 }
 
@@ -1228,10 +1269,10 @@ static void zero3(void *oz, int n1, int n2, int n3)
   double (*z)[n2][n1] = (double (*)[n2][n1])oz;
 
   int i1, i2, i3;
-
-  for (i3 = 0; i3 < n3; i3++) {
-    for (i2 = 0; i2 < n2; i2++) {
-      for (i1 = 0; i1 < n1; i1++) {
+  #pragma omp parallel for private(i1,i2,i3) collapse(3)
+  for (int i3 = 0; i3 < n3; i3++) {
+    for (int i2 = 0; i2 < n2; i2++) {
+      for (int i1 = 0; i1 < n1; i1++) {
         z[i3][i2][i1] = 0.0;
       }
     }
