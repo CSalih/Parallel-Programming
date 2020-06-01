@@ -1,8 +1,8 @@
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <omp.h>
+#include <string.h>
 #include "globals.h"
 #include "randdp.h"
 #include "timers.h"
@@ -48,10 +48,18 @@ static int is1, is2, is3, ie1, ie2, ie3;
 
 /* common /rans_save/ starts */
 double starts[NM];
+	int threads;
+int main(int argc, char *argv[]) {
 
+   if(argc != 2) {
+		fprintf(stderr,"arg missing <n,t> \n");
+		threads=1;
+   }
+   else{
+   	 threads = atoi(argv[1]);
+   }
+	printf("THREADS %d\n",threads);
 
-int main()
-{
   //-------------------------------------------------------------------------c
   // k is the current level. It is passed down through subroutine args
   // and is NOT global. it is the current iteration
@@ -463,7 +471,7 @@ static void psinv(void *or, void *ou, int n1, int n2, int n3,
 	// keine Abhängigkeiten: (r) read only, (u) write only
 
   if (timeron) timer_start(T_psinv);
-  #pragma omp parallel for collapse(2)
+  #pragma omp parallel for collapse(2) num_threads(threads)
   for (int i3 = 1; i3 < n3-1; i3++) { // L1
     for (int i2 = 1; i2 < n2-1; i2++) { // L2 
 		double r1[M], r2[M];
@@ -547,7 +555,7 @@ static void resid(void *ou, void *ov, void *or, int n1, int n2, int n3,
   if (timeron) timer_start(T_resid);
   if(n1*n2*n3 > 100){ // kleine jobs nicht parllelisieren
 	  
-	  #pragma omp parallel for collapse(2)
+	  #pragma omp parallel for collapse(2) num_threads(threads)
 	  for (int i3 = 1; i3 < n3-1; i3++) { // L1
 		for (int i2 = 1; i2 < n2-1; i2++) { // L2
 			double u1[M], u2[M]; // verschoben
@@ -635,9 +643,10 @@ static void rprj3(void *or, int m1k, int m2k, int m3k,
   } else {
     d3 = 1;
   }
+  //printf("-->%d %d\n",m3j%8, m3j%4);
 	//seriell: 2.22s 74%
 	//parallel: 1.85s 71.5%
-  #pragma omp parallel for firstprivate(d1,d2,d3) collapse(1) 
+  #pragma omp parallel for firstprivate(d1,d2,d3) collapse(1) num_threads(threads)
   for (int j3 = 1; j3 < m3j-1; j3++) {
 		int i3 = 2*j3-d3;
     for (int j2 = 1; j2 < m2j-1; j2++) {
@@ -718,7 +727,7 @@ static void interp(void *oz, int mm1, int mm2, int mm3,
   if (timeron) timer_start(T_interp);
   if (n1 != 3 && n2 != 3 && n3 != 3) { // L1
 	
-	#pragma omp parallel for
+	#pragma omp parallel for num_threads(threads)
     for (i3 = 0; i3 < mm3-1; i3++) { // L2
       for (i2 = 0; i2 < mm2-1; i2++) { // L3
 		    double z1[M], z2[M], z3[M];// verschoben, wegen private
@@ -918,7 +927,7 @@ static void comm3(void *ou, int n1, int n2, int n3, int kk)
 	
   if (timeron) timer_start(T_comm3);
 
-	#pragma omp parallel for // loop indipendend u[i3]
+	#pragma omp parallel for num_threads(threads)// loop indipendend u[i3]
   for (int i3 = 1; i3 < n3-1; i3++) {
     for (int i2 = 1; i2 < n2-1; i2++) { // loaklität für Gruppe(u[i3][i2][n1-2],u[i3][i2][n1-1])
       u[i3][i2][   0] = u[i3][i2][n1-2];
@@ -932,7 +941,7 @@ static void comm3(void *ou, int n1, int n2, int n3, int kk)
   }
 
 	if(n1*n2>100){
-		#pragma omp parallel for 
+		#pragma omp parallel for num_threads(threads) // 8&4
 	  for (int i2 = 0; i2 < n2; i2++) {
 		for (int i1 = 0; i1 < n1; i1++) {
 		  u[   0][i2][i1] = u[n3-2][i2][i1];
@@ -1098,35 +1107,30 @@ static void zran3(void *oz, int n1, int n2, int n3, int nx1, int ny1, int k)
     printf(" (%3d,%3d,%3d)", jg[1][i][0], jg[2][i][0], jg[3][i][0]);
     if (++cnt % 5 == 0) printf("\n");
   }
-
   cnt = 0;
   printf("  positive charges at\n");
   for (i = 0; i < mm; i++) {
     printf(" (%3d,%3d,%3d)", jg[1][i][1], jg[2][i][1], jg[3][i][1]);
     if (++cnt % 5 == 0) printf("\n");
   }
-
   cnt = 0;
   printf("  small random numbers were\n");
   for (i = mm-1; i >= 0; i--) {
     printf(" %15.8E", ten[i][0]);
     if (++cnt % 5 == 0) printf("\n");
   }
-
   cnt = 0;
   printf("  and they were found on processor number\n");
   for (i = mm-1; i >= 0; i--) {
     printf(" %4d", jg[0][i][0]);
     if (++cnt % 10 == 0) printf("\n");
   }
-
   cnt = 0;
   printf("  large random numbers were\n");
   for (i = mm-1; i >= 0; i--) {
     printf(" %15.8E", ten[i][1]);
     if (++cnt % 5 == 0) printf("\n");
   }
-
   cnt = 0;
   printf("  and they were found on processor number\n");
   for (i = mm-1; i >= 0; i--) {
@@ -1214,7 +1218,6 @@ static void bubble(double ten[][2], int j1[][2], int j2[][2], int j3[][2],
 {
   double temp;
   int i, j_temp;
-
   if (ind == 1) {
     for (i = 0; i < m-1; i++) {
       if (ten[i][ind] > ten[i+1][ind]) {
@@ -1269,7 +1272,7 @@ static void zero3(void *oz, int n1, int n2, int n3)
   double (*z)[n2][n1] = (double (*)[n2][n1])oz;
 
   int i1, i2, i3;
-  #pragma omp parallel for private(i1,i2,i3) collapse(3)
+  #pragma omp parallel for private(i1,i2,i3) collapse(3) num_threads(threads)
   for (int i3 = 0; i3 < n3; i3++) {
     for (int i2 = 0; i2 < n2; i2++) {
       for (int i1 = 0; i1 < n1; i1++) {
