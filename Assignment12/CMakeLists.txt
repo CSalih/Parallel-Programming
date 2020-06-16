@@ -6,9 +6,10 @@ project (Assignment12)
 
 # Add source to this project's executable.
 add_executable(Vectorization "Task1/Vectorization.c")
+add_executable(VectorizationCS "Task3/VectorizationCS.c")
 
 set_target_properties(Vectorization PROPERTIES COMPILE_FLAGS "-O1" )
-target_link_libraries(Vectorization PRIVATE m)
+set_target_properties(VectorizationCS PROPERTIES COMPILE_FLAGS "-O1" )
 
 
 # Compiler configuration
