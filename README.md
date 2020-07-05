@@ -1,4 +1,29 @@
 # Parallel Programming
+Topics:
+* parallel programming concepts
+* shared memory parallelization using OpenMP
+* performance-oriented programming
+* proper experiment orchestration and benchmarking
+* parallel programming tools
+
+
+# Content
+| Exec               | Topics                                    | Notes             |
+|--------------------|-------------------------------------------|-------------------|
+| [Skripts](Common)  | Benchmark script                          |                   |
+| [1](Assignment1)   | Scaling characteristics                   |                   |
+| [2](Assignment2)   | Performance-oriented programming          | cachegrind, perf  |
+| [3](Assignment3)   | OpenMP - Basics                           |                   |
+| [4](Assignment4)   | OpenMP - Parallel                         | Mergesort         |
+| [5](Assignment5)   | OpenMP - Affinity                         |                   |
+| [6](Assignment6)   | OpenMP - Tasks                            |                   |
+| [7](Assignment7)   | OpenMP - Barrier                          | NQueens           |
+| [8](Assignment8)   | Data and control dependencies             |                   |
+| [9](Assignment9)   | Dependencies analysis                     |                   |
+| [10](Assignment10) | Profiling                                 | gprof             |
+| [11](Assignment11) | Program optimizations                     |                   |
+| [12](Assignment12) | Vectorizing                               |                   |
+
 
 ## Requirements
 * GNU C/C++ compiler (Clang not tested, MSVC works limited)
